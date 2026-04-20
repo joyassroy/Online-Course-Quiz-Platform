@@ -1,0 +1,49 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const mysql = require('mysql2/promise');
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Middleware
+app.use(cors()); // Next.js ফ্রন্টএন্ড থেকে API কল করার জন্য
+app.use(express.json()); // JSON ডেটা রিড করার জন্য
+app.use('/uploads', express.static('uploads')); // ফাইলগুলো পাবলিকলি এক্সেস করার জন্য
+
+// MySQL Database Connection Pool
+const pool = mysql.createPool({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASS,
+    database: process.env.DB_NAME,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+});
+
+// Test Database Connection
+pool.getConnection()
+    .then(connection => {
+        console.log('✅ MySQL Database connected successfully!');
+        connection.release();
+    })
+    .catch(err => {
+        console.error('❌ Database connection failed:', err.message);
+    });
+
+// Make pool available to all routes
+app.use((req, res, next) => {
+    req.db = pool;
+    next();
+});
+
+// Basic Health Check Route
+app.get('/', (req, res) => {
+    res.json({ message: 'Welcome to the OCQP API Server!' });
+});
+
+// Server Initialization
+app.listen(PORT, () => {
+    console.log(`🚀 Server is running on http://localhost:${PORT}`);
+});
