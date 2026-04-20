@@ -54,6 +54,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const courseRoutes = require('./routes/courseRoutes');
 const quizRoutes = require('./routes/quizRoutes');
 const questionRoutes = require('./routes/questionRoutes');
+const studentRoutes = require('./routes/studentRoutes');
 
 // Mount Routes
 app.use('/api/auth', authRoutes);
@@ -61,6 +62,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/admin/courses', courseRoutes); // New
 app.use('/api/admin/quizzes', quizRoutes);   // New
 app.use('/api/admin/questions', questionRoutes);
+app.use('/api/student', studentRoutes);
 
 //const categoryRoutes = require('./routes/categoryRoutes');
 //app.use('/api/admin/categories', categoryRoutes);
