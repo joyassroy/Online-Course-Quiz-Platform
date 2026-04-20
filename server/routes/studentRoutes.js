@@ -6,7 +6,11 @@ const {
     getAvailableCourses, 
     enrollInCourse, 
     getMyCourses, 
-    submitQuizAttempt // এটি মিসিং ছিল, এখন যুক্ত করা হলো
+    submitQuizAttempt, // এটি মিসিং ছিল, এখন যুক্ত করা হলো
+    getLeaderboard, // নতুন
+    getUserProfile, // নতুন
+    completeLesson,
+    generateCertificate
 } = require('../controllers/studentController');
 
 // ২. সিকিউরিটি মিডলওয়্যার ইমপোর্ট করা
@@ -30,5 +34,12 @@ router.get('/my-courses', getMyCourses);
 
 // কুইজ পরীক্ষা দেওয়ার এবং রেজাল্ট সাবমিট করার জন্য
 router.post('/quiz/submit', submitQuizAttempt); 
+
+router.get('/leaderboard/:quizId', getLeaderboard);
+router.get('/profile', getUserProfile);
+// লেসন কমপ্লিট করার রাউট
+router.post('/lesson/complete', completeLesson);
+
+router.post('/certificate/generate', generateCertificate);
 
 module.exports = router;
