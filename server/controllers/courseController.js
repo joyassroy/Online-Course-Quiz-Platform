@@ -1,6 +1,6 @@
 // @desc    Create a new Course
 // @route   POST /api/admin/courses
-exports.createCourse = async (req, res) => {
+const createCourse = async (req, res) => {
     try {
         const { title, description, category, difficulty, price, thumbnail_url } = req.body;
         const instructor_id = req.user.id; // JWT টোকেন থেকে অ্যাডমিন আইডি নিচ্ছি
@@ -24,7 +24,7 @@ exports.createCourse = async (req, res) => {
 
 // @desc    Get all Courses (Optimized for Admin)
 // @route   GET /api/admin/courses
-exports.getAllCourses = async (req, res) => {
+const getAllCourses = async (req, res) => {
     try {
         const [courses] = await req.db.query(
             `SELECT c.*, u.full_name as instructor_name 
@@ -36,4 +36,52 @@ exports.getAllCourses = async (req, res) => {
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
+};
+
+// @desc    Update Course Status (Approve/Reject/Unpublish)
+// @route   PUT /api/admin/courses/:id/status
+const updateCourseStatus = async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body; // 'Published', 'Draft', 'Pending Review'
+
+    try {
+        const [result] = await req.db.query('UPDATE Courses SET status = ? WHERE id = ?', [status, id]);
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, message: "Course not found" });
+        }
+        res.status(200).json({ success: true, message: `Course status updated to ${status}` });
+    } catch (error) {
+        console.error("Update Course Error:", error.message);
+        res.status(500).json({ success: false, message: "Failed to update course status" });
+    }
+};
+
+// @desc    Delete a Course
+// @route   DELETE /api/admin/courses/:id
+const deleteCourse = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const [result] = await req.db.query('DELETE FROM Courses WHERE id = ?', [id]);
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, message: "Course not found" });
+        }
+        res.status(200).json({ success: true, message: "Course deleted successfully" });
+    } catch (error) {
+        console.error("Delete Course Error:", error.message);
+        res.status(500).json({ 
+            success: false, 
+            message: "Cannot delete course. It may have connected lessons or enrollments." 
+        });
+    }
+};
+
+// এক্সপোর্ট করা হচ্ছে
+module.exports = { 
+    createCourse, 
+    getAllCourses, 
+    updateCourseStatus, 
+    deleteCourse 
 };

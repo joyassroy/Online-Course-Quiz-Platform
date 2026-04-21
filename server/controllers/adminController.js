@@ -87,4 +87,76 @@ exports.updateUserDetails = async (req, res) => {
             error_code: error.code
         });
     }
+    
 };
+// ==========================================
+// 🌟 1. Get All Roles with their Permissions
+// ==========================================
+exports.getRolesAndPermissions = async (req, res) => {
+    try {
+        // রোল এবং পারমিশন দুটোই ফেচ করছি
+        const [roles] = await req.db.query('SELECT * FROM Roles');
+        const [permissions] = await req.db.query('SELECT * FROM Permissions');
+
+        // ফ্রন্টএন্ডে দেখানোর সুবিধার জন্য প্রতিটি রোলের ভেতরে তার পারমিশনগুলো ঢুকিয়ে দিচ্ছি
+        const formattedRoles = roles.map(role => {
+            return {
+                ...role,
+                permissions: permissions.filter(p => p.role_id === role.id)
+            };
+        });
+
+        res.status(200).json({ success: true, data: formattedRoles });
+    } catch (error) {
+        console.error("Fetch Roles Error:", error.message);
+        res.status(500).json({ success: false, message: "Failed to fetch roles." });
+    }
+};
+
+// ==========================================
+// 🌟 2. Update Role Permissions (Matrix Update)
+// ==========================================
+exports.updateRolePermissions = async (req, res) => {
+    const { id } = req.params; // role_id
+    const { role_name, permissions } = req.body; 
+    // permissions array দেখতে এমন হবে: [{module_name: 'Courses', can_view: 1, can_create: 0, ...}, ...]
+
+    try {
+        await req.db.query('BEGIN'); // 🚀 Transaction Start (যাতে অর্ধেক ডাটা সেভ হয়ে ক্র্যাশ না করে)
+
+        // ১. রোলের নাম আপডেট করা (যদি চেঞ্জ করে থাকে)
+        if (role_name) {
+            await req.db.query('UPDATE Roles SET role_name = ? WHERE id = ?', [role_name, id]);
+        }
+
+        // ২. এই রোলের আগের সব পারমিশন ডিলিট করে দেওয়া (Matrix আপডেটের স্ট্যান্ডার্ড নিয়ম)
+        await req.db.query('DELETE FROM Permissions WHERE role_id = ?', [id]);
+
+        // ৩. নতুন চেকবক্সের ডাটাগুলো ইনসার্ট করা
+        if (permissions && permissions.length > 0) {
+            const values = permissions.map(p => [
+                id, 
+                p.module_name, 
+                p.can_view ? 1 : 0, 
+                p.can_create ? 1 : 0, 
+                p.can_edit ? 1 : 0, 
+                p.can_delete ? 1 : 0
+            ]);
+
+            // Bulk Insert
+            await req.db.query(
+                'INSERT INTO Permissions (role_id, module_name, can_view, can_create, can_edit, can_delete) VALUES ?',
+                [values]
+            );
+        }
+
+        await req.db.query('COMMIT'); // 🚀 Transaction Save
+        res.status(200).json({ success: true, message: "Permissions updated successfully!" });
+
+    } catch (error) {
+        await req.db.query('ROLLBACK'); // এরর খেলে ডাটাবেস আগের অবস্থায় ফিরে যাবে
+        console.error("Update Permissions Error:", error.message);
+        res.status(500).json({ success: false, message: "Failed to update permissions." });
+    }
+};
+

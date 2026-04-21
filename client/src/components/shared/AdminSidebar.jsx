@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, Users, BookOpen, CheckSquare } from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, CheckSquare,ShieldCheck } from 'lucide-react';
 
 export default function AdminSidebar({ isOpen }) {
     const pathname = usePathname();
@@ -12,7 +12,8 @@ export default function AdminSidebar({ isOpen }) {
         { name: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
         { name: 'Users', icon: Users, path: '/admin/users' },
         { name: 'Courses', icon: BookOpen, path: '/admin/courses' },
-        { name: 'Approvals', icon: CheckSquare, path: '/admin/approvals' },
+        { name: 'Roles & Permissions', icon: ShieldCheck, path: '/admin/roles' },
+        
     ];
 
     return (
