@@ -1,0 +1,12 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *)); /* এই লাইনটি ডার্ক মোড টগল সচল করবে */
+
+/* Global Body Styling for Smooth Theme Transition */
+@layer base {
+  body {
+    @apply bg-slate-50 text-gray-900 transition-colors duration-300;
+  }
+  .dark body {
+    @apply bg-gray-950 text-gray-100;
+  }
+}

@@ -1,3 +1,4 @@
+//const db = require('../config/db');
 // @desc    Get all users (with optional status filter)
 // @route   GET /api/admin/users?status=Pending
 exports.getAllUsers = async (req, res) => {
@@ -55,5 +56,35 @@ exports.updateUserStatus = async (req, res) => {
     } catch (error) {
         console.error('Error updating user status:', error);
         res.status(500).json({ success: false, message: 'Server error while updating status.' });
+    }
+};
+exports.updateUserDetails = async (req, res) => {
+    const { id } = req.params;
+    const { full_name, email, role_id } = req.body;
+
+    try {
+        const updateQuery = `
+            UPDATE Users 
+            SET full_name = ?, email = ?, role_id = ? 
+            WHERE id = ?
+        `;
+        
+        const [result] = await req.db.query(updateQuery, [full_name, email, role_id, id]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, message: "User not found." });
+        }
+
+        res.status(200).json({ success: true, message: "User details updated successfully!" });
+
+    } catch (error) {
+        // 🔴 এইখানে আমরা আসল এররটা রেসপন্সে পাঠিয়ে দিচ্ছি!
+        console.error("Database Update Error:", error);
+        res.status(500).json({ 
+            success: false, 
+            message: "Failed to update user.",
+            real_error: error.message, // 👈 Thunder Client-এ এইটা দেখাবে!
+            error_code: error.code
+        });
     }
 };
