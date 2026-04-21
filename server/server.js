@@ -63,7 +63,7 @@ app.use('/api/admin/courses', courseRoutes); // New
 app.use('/api/admin/quizzes', quizRoutes);   // New
 app.use('/api/admin/questions', questionRoutes);
 app.use('/api/student', studentRoutes);
-
+app.use('/api/instructor', require('./routes/instructorRoutes'));
 //const categoryRoutes = require('./routes/categoryRoutes');
 //app.use('/api/admin/categories', categoryRoutes);
 

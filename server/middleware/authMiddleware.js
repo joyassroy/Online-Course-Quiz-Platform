@@ -31,3 +31,11 @@ exports.isAdmin = (req, res, next) => {
         res.status(403).json({ success: false, message: 'Access Denied. Admin privileges required.' });
     }
 };
+exports.isInstructor = (req, res, next) => {
+    // role_id 1 (Admin) অথবা 2 (Instructor) দুজনেই এই প্যানেল দেখতে পারবে
+    if (req.user && (req.user.role_id === 2 || req.user.role_id === 1)) {
+        next();
+    } else {
+        res.status(403).json({ success: false, message: "Access denied. Instructor only." });
+    }
+};
