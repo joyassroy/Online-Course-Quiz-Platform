@@ -6,26 +6,85 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '@/utils/api';
 import toast from 'react-hot-toast';
 import GlassCard from '@/components/ui/GlassCard';
-import { 
-    Search, BookOpen, User, 
-    ArrowRight, ShoppingBag, Loader2, 
-    Filter, X, PlayCircle, ChevronRight 
+import {
+    Search, BookOpen, User,
+    ArrowRight, ShoppingBag, Loader2,
+    Filter, X, PlayCircle, ChevronRight,
+    Smartphone, CreditCard,Lock, ShieldCheck // New Icons for Payment
 } from 'lucide-react';
+
+// --- 💳 bKash Style Payment Modal Component ---
+const PaymentModal = ({ isOpen, onClose, onConfirm, course, isProcessing }) => {
+    const [pin, setPin] = useState("");
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="bg-white dark:bg-gray-900 w-full max-w-md rounded-[2rem] overflow-hidden shadow-2xl border border-pink-100 dark:border-pink-900/20"
+            >
+                {/* bKash Header */}
+                <div className="bg-[#D12053] p-6 text-white flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                        <Smartphone size={24} />
+                        <h3 className="font-bold text-lg">bKash Payment</h3>
+                    </div>
+                    <button onClick={onClose} className="hover:rotate-90 transition-transform"><X /></button>
+                </div>
+
+                <div className="p-8 space-y-6">
+                    <div className="text-center space-y-2">
+                        <p className="text-gray-500 dark:text-gray-400 font-medium text-sm uppercase tracking-widest">Merchant: OCQP Platform</p>
+                        <h4 className="text-xl font-black text-gray-900 dark:text-white leading-tight">{course?.title}</h4>
+                        <div className="text-3xl font-black text-[#D12053] mt-2">৳ {course?.price}</div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <input
+                            type="password"
+                            placeholder="Enter bKash PIN"
+                            value={pin}
+                            onChange={(e) => setPin(e.target.value)}
+                            className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-800 border-2 border-transparent focus:border-[#D12053] rounded-2xl outline-none text-center text-xl tracking-[0.5em] font-bold transition-all"
+                        />
+                        <p className="text-[10px] text-center text-gray-400 uppercase font-bold tracking-widest flex items-center justify-center gap-1">
+                            <ShieldCheck size={12} /> Secure Dummy Payment Encrypted
+                        </p>
+                    </div>
+
+                    <button
+                        onClick={() => onConfirm(course.id)}
+                        disabled={isProcessing || pin.length < 4}
+                        className="w-full py-4 bg-[#D12053] hover:bg-[#b01b46] disabled:bg-gray-300 text-white font-black rounded-2xl shadow-lg shadow-pink-500/20 transition-all flex items-center justify-center gap-2"
+                    >
+                        {isProcessing ? <Loader2 className="animate-spin" /> : <>Confirm Payment <CreditCard size={20} /></>}
+                    </button>
+                </div>
+            </motion.div>
+        </div>
+    );
+};
 
 export default function CourseExplorer() {
     const router = useRouter();
     const [courses, setCourses] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [enrollingId, setEnrollingId] = useState(null); 
+    const [enrollingId, setEnrollingId] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
-    
+
     const [filterCategory, setFilterCategory] = useState('All');
     const [filterDifficulty, setFilterDifficulty] = useState('All');
     const [filterPrice, setFilterPrice] = useState('All');
-    
+
     const [selectedCourse, setSelectedCourse] = useState(null);
     const [courseDetails, setCourseDetails] = useState(null);
     const [fetchingDetails, setFetchingDetails] = useState(false);
+
+    // 🌟 Payment State
+    const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+    const [pendingCourse, setPendingCourse] = useState(null);
 
     useEffect(() => {
         fetchAvailableCourses();
@@ -53,13 +112,24 @@ export default function CourseExplorer() {
                 setCourseDetails(res.data.data);
             }
         } catch (error) {
-            setCourseDetails({ lessons: [] }); 
+            setCourseDetails({ lessons: [] });
         } finally {
             setFetchingDetails(false);
         }
     };
 
+    // 🌟 Logic to decide: Direct Enroll or Payment
+    const initiateEnrollment = (course) => {
+        if (course.price > 0) {
+            setPendingCourse(course);
+            setIsPaymentOpen(true);
+        } else {
+            handleEnroll(course.id);
+        }
+    };
+
     const handleEnroll = async (courseId) => {
+        setIsPaymentOpen(false); // Close modal if it was open
         setEnrollingId(courseId);
         const toastId = toast.loading("Processing your enrollment...");
         try {
@@ -76,13 +146,13 @@ export default function CourseExplorer() {
     };
 
     const filteredCourses = courses.filter(course => {
-        const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                             course.category.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            course.category.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesCategory = filterCategory === 'All' || course.category === filterCategory;
         const matchesDifficulty = filterDifficulty === 'All' || course.difficulty === filterDifficulty;
-        const matchesPrice = filterPrice === 'All' || 
-                            (filterPrice === 'Free' ? course.price == 0 : course.price > 0);
-        
+        const matchesPrice = filterPrice === 'All' ||
+            (filterPrice === 'Free' ? course.price == 0 : course.price > 0);
+
         return matchesSearch && matchesCategory && matchesDifficulty && matchesPrice;
     });
 
@@ -99,7 +169,16 @@ export default function CourseExplorer() {
 
     return (
         <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8">
-            
+
+            {/* Payment Modal Integration */}
+            <PaymentModal
+                isOpen={isPaymentOpen}
+                course={pendingCourse}
+                onClose={() => setIsPaymentOpen(false)}
+                onConfirm={handleEnroll}
+                isProcessing={enrollingId === pendingCourse?.id}
+            />
+
             {/* 🔍 Hero & Search Section */}
             <div className="relative bg-gradient-to-r from-sky-600 to-indigo-700 rounded-[2.5rem] p-8 md:p-14 overflow-hidden shadow-2xl shadow-sky-500/20">
                 <div className="relative z-10 space-y-6">
@@ -109,11 +188,11 @@ export default function CourseExplorer() {
                         </h1>
                         <p className="text-sky-100/80 text-lg font-medium">Browse our expert-led courses and start your transformation today.</p>
                     </div>
-                    
+
                     <div className="relative max-w-xl">
                         <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={22} />
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             placeholder="Search by title, keyword..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -128,25 +207,25 @@ export default function CourseExplorer() {
                 <div className="flex items-center gap-2 text-sky-500 font-bold px-2">
                     <Filter size={18} /> <span className="text-sm">Filters:</span>
                 </div>
-                
-                <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-sky-500">
+
+                <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-sky-500 transition-all">
                     {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
 
-                <select value={filterDifficulty} onChange={(e) => setFilterDifficulty(e.target.value)} className="bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-2 text-sm font-semibold focus:ring-2 focus:ring-sky-500">
+                <select value={filterDifficulty} onChange={(e) => setFilterDifficulty(e.target.value)} className="bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-2 text-sm font-semibold focus:ring-2 focus:ring-sky-500 transition-all">
                     <option value="All">All Levels</option>
                     <option value="Beginner">Beginner</option>
                     <option value="Intermediate">Intermediate</option>
                     <option value="Advanced">Advanced</option>
                 </select>
 
-                <select value={filterPrice} onChange={(e) => setFilterPrice(e.target.value)} className="bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-sky-500">
+                <select value={filterPrice} onChange={(e) => setFilterPrice(e.target.value)} className="bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-sky-500 transition-all">
                     <option value="All">All Prices</option>
                     <option value="Free">Free</option>
                     <option value="Paid">Paid</option>
                 </select>
 
-                <button onClick={() => {setFilterCategory('All'); setFilterDifficulty('All'); setFilterPrice('All'); setSearchTerm('')}} className="ml-auto text-xs font-bold text-gray-400 hover:text-sky-500 uppercase tracking-widest">
+                <button onClick={() => { setFilterCategory('All'); setFilterDifficulty('All'); setFilterPrice('All'); setSearchTerm('') }} className="ml-auto text-xs font-bold text-gray-400 hover:text-sky-500 uppercase tracking-widest">
                     Reset All
                 </button>
             </div>
@@ -155,8 +234,8 @@ export default function CourseExplorer() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {filteredCourses.map((course, idx) => (
                     <motion.div key={course.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}>
-                        <GlassCard 
-                            className="relative flex flex-col h-full overflow-hidden hover:translate-y-[-8px] transition-all duration-500 border-none bg-white dark:bg-gray-900 shadow-sm hover:shadow-2xl group cursor-pointer" 
+                        <GlassCard
+                            className="relative flex flex-col h-full overflow-hidden hover:translate-y-[-8px] transition-all duration-500 border-none bg-white dark:bg-gray-900 shadow-sm hover:shadow-2xl group cursor-pointer"
                             onClick={() => router.push(`/student/courses/${course.id}`)}
                         >
                             {/* Course Thumbnail */}
@@ -168,12 +247,12 @@ export default function CourseExplorer() {
                                         <BookOpen size={48} />
                                     </div>
                                 )}
-                                <div className="absolute top-4 left-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-sky-600">
+                                <div className="absolute top-4 left-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-sky-600 shadow-sm">
                                     {course.category}
                                 </div>
-                                
+
                                 {/* Quick Preview Button */}
-                                <button 
+                                <button
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         fetchCoursePreview(course);
@@ -211,14 +290,47 @@ export default function CourseExplorer() {
             {/* 🌟 Sidebar Preview Section */}
             <AnimatePresence>
                 {selectedCourse && (
-                    <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm">
-                        <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="w-full max-w-2xl bg-white dark:bg-gray-950 h-full shadow-2xl overflow-y-auto">
-                            <div className="p-6 border-b border-gray-100 dark:border-gray-800 sticky top-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md z-10 flex justify-between items-center">
-                                <h2 className="text-xl font-black dark:text-white uppercase tracking-tight">Quick Preview</h2>
-                                <button onClick={() => setSelectedCourse(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all text-gray-500"><X /></button>
+                    <>
+                        {/* 🌑 Backdrop: Clicking this will close the sidebar */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setSelectedCourse(null)} // 🌟 Easy close on click outside
+                            className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm cursor-zoom-out"
+                        />
+
+                        {/* 📄 Sidebar Content */}
+                        <motion.div
+                            initial={{ x: '100%' }}
+                            animate={{ x: 0 }}
+                            exit={{ x: '100%' }}
+                            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                            className="fixed right-0 top-0 z-[70] w-full max-w-2xl bg-white dark:bg-gray-950 h-full shadow-2xl overflow-y-auto flex flex-col"
+                        >
+                            {/* Header */}
+                            <div className="p-6 border-b border-gray-100 dark:border-gray-800 sticky top-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md z-20 flex justify-between items-center">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-sky-500/10 flex items-center justify-center text-sky-500">
+                                        <BookOpen size={20} />
+                                    </div>
+                                    <h2 className="text-xl font-black dark:text-white uppercase tracking-tight">Quick Preview</h2>
+                                </div>
+
+                                {/* ❌ Enhanced Close Button */}
+                                <button
+                                    onClick={() => setSelectedCourse(null)}
+                                    className="group flex items-center gap-2 p-2 pr-4 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-all text-gray-400 hover:text-red-500 font-bold text-xs uppercase tracking-widest"
+                                >
+                                    <div className="p-1.5 bg-gray-100 dark:bg-gray-800 group-hover:bg-red-100 dark:group-hover:bg-red-900/40 rounded-full transition-colors">
+                                        <X size={18} />
+                                    </div>
+                                    Close
+                                </button>
                             </div>
 
-                            <div className="p-8 space-y-8">
+                            {/* Content Body */}
+                            <div className="p-8 space-y-8 flex-1">
                                 <div>
                                     <h1 className="text-4xl font-black dark:text-white mb-4 leading-tight">{selectedCourse.title}</h1>
                                     <div className="flex flex-wrap gap-4 items-center">
@@ -232,30 +344,46 @@ export default function CourseExplorer() {
                                         <span>Curriculum Preview</span>
                                         {fetchingDetails && <Loader2 size={16} className="animate-spin text-sky-500" />}
                                     </h4>
+
                                     <div className="space-y-3">
-                                        {courseDetails?.lessons?.map((lesson, i) => (
-                                            <div key={lesson.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-8 h-8 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center text-xs font-black text-sky-500">{i + 1}</div>
-                                                    <p className="font-bold text-gray-800 dark:text-gray-200">{lesson.title}</p>
+                                        {courseDetails?.lessons?.length > 0 ? (
+                                            courseDetails.lessons.map((lesson, i) => (
+                                                <div key={lesson.id} className="flex items-center justify-between p-5 bg-gray-50 dark:bg-gray-900 rounded-3xl border border-transparent hover:border-sky-500/20 transition-all hover:translate-x-1 duration-300">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-10 h-10 rounded-2xl bg-white dark:bg-gray-800 flex items-center justify-center shadow-sm font-black text-sky-500 border border-gray-100 dark:border-gray-700">{i + 1}</div>
+                                                        <p className="font-bold text-gray-800 dark:text-gray-200">{lesson.title}</p>
+                                                    </div>
+                                                    <PlayCircle size={20} className="text-gray-300" />
                                                 </div>
-                                                <PlayCircle size={18} className="text-gray-300" />
+                                            ))
+                                        ) : (
+                                            <div className="py-12 flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-[2.5rem] border-2 border-dashed border-gray-200 dark:border-gray-800">
+                                                <Lock size={32} className="text-gray-300 mb-2" />
+                                                <p className="text-gray-400 text-sm font-bold uppercase tracking-widest">Enroll to see full curriculum</p>
                                             </div>
-                                        )) || <p className="text-gray-400 text-center">Enroll to see full curriculum.</p>}
+                                        )}
                                     </div>
                                 </div>
+                            </div>
 
-                                <div className="pt-8 border-t border-gray-100 dark:border-gray-800 sticky bottom-0 bg-white dark:bg-gray-950 pb-8 flex gap-3">
-                                    <button onClick={() => router.push(`/student/courses/${selectedCourse.id}`)} className="flex-1 py-4 border-2 border-sky-500 text-sky-500 font-black rounded-2xl hover:bg-sky-50 transition-all flex items-center justify-center gap-2">
-                                        Details <ChevronRight size={18} />
-                                    </button>
-                                    <button onClick={() => handleEnroll(selectedCourse.id)} disabled={enrollingId === selectedCourse.id} className="flex-[2] py-4 bg-sky-500 hover:bg-sky-600 text-white font-black rounded-2xl flex items-center justify-center transition-all shadow-lg shadow-sky-500/20">
-                                        {enrollingId === selectedCourse.id ? <Loader2 className="animate-spin" /> : 'Enroll Now'}
-                                    </button>
-                                </div>
+                            {/* Footer Action */}
+                            <div className="p-8 border-t border-gray-100 dark:border-gray-800 sticky bottom-0 bg-white/90 dark:bg-gray-950/90 backdrop-blur-md pb-8 flex gap-4">
+                                <button
+                                    onClick={() => router.push(`/student/courses/${selectedCourse.id}`)}
+                                    className="flex-1 py-5 border-2 border-gray-100 dark:border-gray-800 text-gray-900 dark:text-white font-black rounded-[1.5rem] hover:bg-gray-50 dark:hover:bg-gray-900 transition-all flex items-center justify-center gap-2 group"
+                                >
+                                    Details <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                                </button>
+                                <button
+                                    onClick={() => initiateEnrollment(selectedCourse)}
+                                    disabled={enrollingId === selectedCourse.id}
+                                    className="flex-[2] py-5 bg-sky-500 hover:bg-sky-600 text-white font-black rounded-[1.5rem] flex items-center justify-center transition-all shadow-xl shadow-sky-500/30 active:scale-95"
+                                >
+                                    {enrollingId === selectedCourse.id ? <Loader2 className="animate-spin" /> : <><ShoppingBag size={22} className="mr-2" /> Enroll Now</>}
+                                </button>
                             </div>
                         </motion.div>
-                    </div>
+                    </>
                 )}
             </AnimatePresence>
         </div>

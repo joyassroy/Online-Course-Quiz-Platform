@@ -2,6 +2,7 @@ import { Inter } from 'next/font/google';
 import '@/styles/globals.css';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import Navbar from '@/components/shared/Navbar'; // এইটা ইমপোর্ট করো
+import Footer from '@/components/shared/Footer';
 import { Toaster } from 'react-hot-toast';
 const inter = Inter({ subsets: ['latin'] });
 
@@ -36,7 +37,7 @@ export default function RootLayout({ children }) {
                 />
                         {children}
                     </main>
-
+                    <Footer />
                 </ThemeProvider>
             </body>
         </html>
