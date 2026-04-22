@@ -70,16 +70,22 @@ app.use('/api/instructor', require('./routes/instructorRoutes'));
 //const categoryRoutes = require('./routes/categoryRoutes');
 //app.use('/api/admin/categories', categoryRoutes);
 
-// Basic Health Check Route
+// Basic Health Check Route (ব্রাউজারে লিংকে ঢুকলে এটা দেখাবে)
 app.get('/', (req, res) => {
     res.json({ message: 'Welcome to the OCQP API Server!' });
+});
+
+// 🌟 New: Ping Route for cron-job.org (সার্ভার সতেজ রাখার জন্য)
+app.get('/ping', (req, res) => {
+    res.status(200).send('Server is awake! 🚀');
 });
 
 // ==========================================
 // 5. Server Initialization
 // ==========================================
-app.listen(PORT, '127.0.0.1',() => {
-    console.log(`🚀 Server is running on http://localhost:${PORT}`);
+// ⚠️ Update: Removed '127.0.0.1' so Render can access it globally
+app.listen(PORT, () => {
+    console.log(`🚀 Server is running on port ${PORT}`);
 });
 
 module.exports = pool;
