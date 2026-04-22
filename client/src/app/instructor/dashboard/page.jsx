@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import api from '@/utils/api';
 import GlassCard from '@/components/ui/GlassCard';
 import { 
-    BookOpen, Users, GraduationCap, LayoutDashboard, 
+    BookOpen, Users, GraduationCap, 
     CheckCircle, Clock, FileEdit, PlusCircle 
 } from 'lucide-react';
 import Link from 'next/link';
@@ -31,58 +31,98 @@ export default function InstructorDashboard() {
     };
 
     if (loading) {
-        return <div className="flex justify-center items-center h-[80vh] font-bold text-sky-500 animate-pulse">Loading Creator Studio...</div>;
+        return <div className="flex justify-center items-center h-[80vh] font-bold text-sky-500 animate-pulse">Loading Dashboard...</div>;
     }
 
     const { stats, courses } = dashboardData;
 
+    // স্ট্যাটাস কালার ডাইনামিক করার জন্য ছোট্ট একটা ফাংশন
+    const getStatusStyle = (status) => {
+        if (status === 'Published') return 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400';
+        if (status === 'Pending Review') return 'bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400';
+        return 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400';
+    };
+
     return (
-        <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">
+        <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 md:space-y-8 mt-4 md:mt-0">
             
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-200 dark:border-gray-800 pb-6">
-                <div>
-                    <h1 className="text-3xl font-black dark:text-white flex items-center tracking-tight">
-                        <LayoutDashboard className="mr-3 text-sky-500" size={32} /> Creator Studio
-                    </h1>
-                    <p className="text-gray-500 text-sm mt-1">Manage your educational content and track student progress.</p>
-                </div>
-                <Link href="/instructor/courses/create" className="px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded-xl shadow-lg shadow-sky-500/30 transition-all flex items-center">
-                    <PlusCircle className="mr-2" size={20} /> Create New Course
+            {/* 🌟 Action Bar (হেডারের বদলে শুধু বাটন রাখা হয়েছে) */}
+            <div className="flex justify-end">
+                <Link 
+                    href="/instructor/courses/create" 
+                    className="w-full md:w-auto px-6 py-3 md:py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded-xl shadow-lg shadow-sky-500/30 transition-all flex items-center justify-center group"
+                >
+                    <PlusCircle className="mr-2 group-hover:rotate-90 transition-transform duration-300" size={20} /> 
+                    Create New Course
                 </Link>
             </div>
 
-            {/* 🌟 3 Quick Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <GlassCard className="p-6 border-l-4 border-l-sky-500 relative overflow-hidden group">
+            {/* 🌟 3 Quick Stats Cards (Mobile a auto 1 column, Desktop a 3 columns) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+                <GlassCard className="p-5 md:p-6 border-l-4 border-l-sky-500 relative overflow-hidden group">
                     <BookOpen className="absolute -bottom-4 -right-4 text-sky-500/10 group-hover:scale-110 transition-transform" size={100} />
-                    <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">Total Courses</p>
-                    <h2 className="text-4xl font-black dark:text-white mt-2">{stats.totalCourses}</h2>
+                    <p className="text-gray-500 font-bold uppercase tracking-widest text-[10px] md:text-xs">Total Courses</p>
+                    <h2 className="text-3xl md:text-4xl font-black dark:text-white mt-1 md:mt-2">{stats.totalCourses}</h2>
                 </GlassCard>
 
-                <GlassCard className="p-6 border-l-4 border-l-indigo-500 relative overflow-hidden group">
+                <GlassCard className="p-5 md:p-6 border-l-4 border-l-indigo-500 relative overflow-hidden group">
                     <Users className="absolute -bottom-4 -right-4 text-indigo-500/10 group-hover:scale-110 transition-transform" size={100} />
-                    <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">Total Students</p>
-                    <h2 className="text-4xl font-black dark:text-white mt-2">{stats.totalStudents}</h2>
+                    <p className="text-gray-500 font-bold uppercase tracking-widest text-[10px] md:text-xs">Total Students</p>
+                    <h2 className="text-3xl md:text-4xl font-black dark:text-white mt-1 md:mt-2">{stats.totalStudents}</h2>
                 </GlassCard>
 
-                <GlassCard className="p-6 border-l-4 border-l-emerald-500 relative overflow-hidden group">
+                <GlassCard className="p-5 md:p-6 border-l-4 border-l-emerald-500 relative overflow-hidden group">
                     <GraduationCap className="absolute -bottom-4 -right-4 text-emerald-500/10 group-hover:scale-110 transition-transform" size={100} />
-                    <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">Avg. Quiz Score</p>
-                    <h2 className="text-4xl font-black dark:text-white mt-2">{stats.avgQuizScore}%</h2>
+                    <p className="text-gray-500 font-bold uppercase tracking-widest text-[10px] md:text-xs">Avg. Quiz Score</p>
+                    <h2 className="text-3xl md:text-4xl font-black dark:text-white mt-1 md:mt-2">{stats.avgQuizScore}%</h2>
                 </GlassCard>
             </div>
 
-            {/* 🌟 My Courses Table */}
+            {/* 🌟 My Courses Area */}
             <GlassCard className="overflow-hidden border-none shadow-xl bg-white/50 dark:bg-gray-900/50">
-                <div className="p-6 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
+                <div className="p-4 md:p-6 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
                     <h3 className="text-lg font-black dark:text-white flex items-center">
-                        <BookOpen className="mr-2 text-sky-500" size={20} /> My Courses Overview
+                        <BookOpen className="mr-2 text-sky-500" size={20} /> My Courses
                     </h3>
                 </div>
                 
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left min-w-[600px]">
+                {/* 📱 Mobile View (Card Layout) */}
+                <div className="md:hidden flex flex-col p-4 gap-4">
+                    {courses.length === 0 ? (
+                        <p className="text-center text-gray-500 text-sm py-4">No courses created yet.</p>
+                    ) : (
+                        courses.map(course => (
+                            <div key={course.id} className="bg-white dark:bg-gray-800/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm space-y-3 relative overflow-hidden">
+                                <div className="flex justify-between items-start gap-2">
+                                    <h4 className="font-bold dark:text-white text-base leading-tight pr-16">{course.title}</h4>
+                                    {/* Status Badge */}
+                                    <span className={`absolute top-4 right-4 px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider flex items-center ${getStatusStyle(course.status)}`}>
+                                        {course.status === 'Published' && <CheckCircle size={10} className="mr-1" />}
+                                        {course.status === 'Pending Review' && <Clock size={10} className="mr-1" />}
+                                        {course.status === 'Draft' && <FileEdit size={10} className="mr-1" />}
+                                        {course.status}
+                                    </span>
+                                </div>
+                                
+                                <div className="flex justify-between items-center text-sm border-t border-gray-50 dark:border-gray-700 pt-3">
+                                    <span className="text-gray-500 font-medium text-xs">{course.category}</span>
+                                    <span className="font-black text-emerald-500 text-lg">${course.price}</span>
+                                </div>
+                                
+                                <Link 
+                                    href={`/instructor/courses/${course.id}/edit`} 
+                                    className="w-full flex justify-center items-center mt-2 text-sky-500 bg-sky-50 hover:bg-sky-100 dark:bg-sky-500/10 dark:hover:bg-sky-500/20 py-2.5 rounded-xl font-bold text-sm transition-colors"
+                                >
+                                    Manage Content
+                                </Link>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                {/* 💻 Desktop View (Table Layout) */}
+                <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-left">
                         <thead className="bg-gray-100/50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800">
                             <tr>
                                 <th className="p-4 text-xs font-black text-gray-500 uppercase tracking-widest">Course Title</th>
@@ -102,10 +142,7 @@ export default function InstructorDashboard() {
                                         <td className="p-4 text-sm text-gray-500">{course.category}</td>
                                         <td className="p-4 text-sm font-bold text-emerald-500">${course.price}</td>
                                         <td className="p-4">
-                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center w-max ${
-                                                course.status === 'Published' ? 'bg-emerald-100 text-emerald-600' : 
-                                                course.status === 'Pending Review' ? 'bg-amber-100 text-amber-600' : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
-                                            }`}>
+                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center w-max ${getStatusStyle(course.status)}`}>
                                                 {course.status === 'Published' && <CheckCircle size={12} className="mr-1" />}
                                                 {course.status === 'Pending Review' && <Clock size={12} className="mr-1" />}
                                                 {course.status === 'Draft' && <FileEdit size={12} className="mr-1" />}
@@ -113,8 +150,8 @@ export default function InstructorDashboard() {
                                             </span>
                                         </td>
                                         <td className="p-4 text-right">
-                                            <Link href={`/instructor/courses/${course.id}/edit`} className="text-sky-500 hover:text-sky-600 font-bold text-sm bg-sky-50 dark:bg-sky-900/20 px-4 py-2 rounded-lg transition-all">
-                                                Manage Content
+                                            <Link href={`/instructor/courses/${course.id}/edit`} className="text-sky-500 hover:text-sky-600 font-bold text-sm bg-sky-50 dark:bg-sky-900/20 hover:bg-sky-100 px-4 py-2 rounded-lg transition-all">
+                                                Manage
                                             </Link>
                                         </td>
                                     </tr>
