@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // আমাদের ব্যাকএন্ডের বেইস ইউআরএল
 const api = axios.create({
-    baseURL: 'http://127.0.0.1:5000/api', 
+    baseURL:process.env.NEXT_PUBLIC_API_URL, 
 });
 
 // Request Interceptor: এটি এমন এক দারোয়ান যে প্রতিটি রিকোয়েস্ট যাওয়ার আগে চেক করবে টোকেন আছে কি না। 
