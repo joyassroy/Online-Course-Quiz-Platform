@@ -39,3 +39,12 @@ exports.isInstructor = (req, res, next) => {
         res.status(403).json({ success: false, message: "Access denied. Instructor only." });
     }
 };
+// ৩. চেক করবে ইউজারটি স্টুডেন্ট কি না
+exports.isStudent = (req, res, next) => {
+    // role_id 3 (Student) অথবা 1 (Admin) দুজনেই স্টুডেন্ট রাউট এক্সেস করতে পারবে
+    if (req.user && (req.user.role_id === 3 || req.user.role_id === 1)) {
+        next();
+    } else {
+        res.status(403).json({ success: false, message: "Access denied. Student only." });
+    }
+};

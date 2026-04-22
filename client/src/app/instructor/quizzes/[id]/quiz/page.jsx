@@ -21,10 +21,9 @@ export default function ManageQuiz() {
     const [quizForm, setQuizForm] = useState({ title: 'Final Assessment', time_limit_minutes: 30, pass_percentage: 60, max_attempts: 3 });
     const [qForm, setQForm] = useState({ question_text: '', option_1: '', option_2: '', option_3: '', option_4: '', correct_option: 1 });
 
-    const fetchAttempts = async (quizId) => {
-        const res = await api.get(`/instructor/quizzes/${quizId}/attempts`);
-        if (res.data.success) setAttempts(res.data.data);
-    };
+    useEffect(() => {
+        fetchQuizData();
+    }, [courseId]);
 
     const fetchQuizData = async () => {
         try {
@@ -41,10 +40,10 @@ export default function ManageQuiz() {
         } catch (error) { console.error(error); } finally { setLoading(false); }
     };
 
-    useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        fetchQuizData();
-    }, [courseId]);
+    const fetchAttempts = async (quizId) => {
+        const res = await api.get(`/instructor/quizzes/${quizId}/attempts`);
+        if (res.data.success) setAttempts(res.data.data);
+    };
 
     // 🌟 Save Quiz
     const handleSaveQuiz = async (e) => {

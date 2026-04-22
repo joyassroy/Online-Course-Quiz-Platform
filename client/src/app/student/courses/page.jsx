@@ -1,173 +1,302 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import api from '@/utils/api';
+import toast from 'react-hot-toast';
 import GlassCard from '@/components/ui/GlassCard';
-import { Search, Filter, BookOpen, Clock, Star } from 'lucide-react';
+import { 
+    Search, BookOpen, Star, User, 
+    ArrowRight, ShoppingBag, Loader2, 
+    Filter, X, PlayCircle, Clock, ChevronRight 
+} from 'lucide-react';
 
-export default function CourseDiscovery() {
+export default function CourseExplorer() {
+    const router = useRouter();
     const [courses, setCourses] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [enrollingId, setEnrollingId] = useState(null); 
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState('All');
-
     
+    // 🌟 Filter States
+    const [filterCategory, setFilterCategory] = useState('All');
+    const [filterDifficulty, setFilterDifficulty] = useState('All');
+    const [filterPrice, setFilterPrice] = useState('All');
+    
+    // 🌟 Detail Preview States
+    const [selectedCourse, setSelectedCourse] = useState(null);
+    const [courseDetails, setCourseDetails] = useState(null);
+    const [fetchingDetails, setFetchingDetails] = useState(false);
 
-    const fetchCourses = async () => {
+    useEffect(() => {
+        fetchAvailableCourses();
+    }, []);
+
+    const fetchAvailableCourses = async () => {
         try {
-            // আমাদের ব্যাকএন্ড API কল করছি
-            const response = await api.get('/student/courses');
-            if (response.data.success) {
-                setCourses(response.data.data);
+            const res = await api.get('/student/courses');
+            if (res.data.success) {
+                setCourses(res.data.data);
             }
         } catch (error) {
-            console.error("Error fetching courses:", error);
+            toast.error("Failed to load course catalog.");
         } finally {
             setLoading(false);
         }
     };
-    useEffect(() => {
-        fetchCourses();
-    }, []);
 
-    // ফিল্টার লজিক
+    // 🌟 Fetch Course Details & Lessons
+    const fetchCoursePreview = async (course) => {
+        setSelectedCourse(course);
+        setFetchingDetails(true);
+        try {
+            // ইনস্ট্রাক্টরের এন্ডপয়েন্ট বা স্টুডেন্ট এন্ডপয়েন্ট থেকে লেসন লিস্ট আনা
+            const res = await api.get(`/student/courses/${course.id}/lessons`);
+            if (res.data.success) {
+                setCourseDetails(res.data.data);
+            }
+        } catch (error) {
+            console.error("Preview error:", error);
+            // যদি এনরোল করা না থাকে, তবে হয়তো লেসন লিস্ট আসবে না, সেটা হ্যান্ডেল করা
+            setCourseDetails({ lessons: [] }); 
+        } finally {
+            setFetchingDetails(false);
+        }
+    };
+
+    const handleEnroll = async (courseId) => {
+        setEnrollingId(courseId);
+        const toastId = toast.loading("Processing your enrollment...");
+        try {
+            const res = await api.post('/student/enroll', { course_id: courseId });
+            if (res.data.success) {
+                toast.success("Successfully Enrolled! 🎉", { id: toastId });
+                router.push('/student/dashboard');
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Could not enroll.", { id: toastId });
+        } finally {
+            setEnrollingId(null);
+        }
+    };
+
+    // 🌟 Multi-Level Filtering Logic
     const filteredCourses = courses.filter(course => {
-        const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesCategory = selectedCategory === 'All' || course.category === selectedCategory;
-        return matchesSearch && matchesCategory;
+        const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                             course.category.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesCategory = filterCategory === 'All' || course.category === filterCategory;
+        const matchesDifficulty = filterDifficulty === 'All' || course.difficulty === filterDifficulty;
+        const matchesPrice = filterPrice === 'All' || 
+                            (filterPrice === 'Free' ? course.price == 0 : course.price > 0);
+        
+        return matchesSearch && matchesCategory && matchesDifficulty && matchesPrice;
     });
 
-    // ডাইনামিক ক্যাটাগরি লিস্ট বের করা
     const categories = ['All', ...new Set(courses.map(c => c.category))];
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center min-h-[60vh]">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-sky-500"></div>
+            <div className="flex flex-col justify-center items-center min-h-[80vh]">
+                <Loader2 className="animate-spin text-sky-500 mb-4" size={40} />
+                <p className="text-gray-500 font-bold animate-pulse tracking-widest">SYNCING CATALOG...</p>
             </div>
         );
     }
 
     return (
-        <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8">
             
-            {/* 🌟 Header Section */}
-            <div className="mb-10 text-center md:text-left">
-                <h1 className="text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-                    Explore <span className="text-sky-500">Courses</span>
-                </h1>
-                <p className="mt-3 text-lg text-gray-600 dark:text-gray-400 max-w-2xl">
-                    Discover new skills, master your craft, and level up your knowledge with our interactive learning paths.
-                </p>
-            </div>
-
-            {/* 🌟 Search & Filter Section */}
-            <GlassCard className="mb-10 p-4 dark:bg-gray-800/60">
-                <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
+            {/* 🔍 Hero & Search Section */}
+            <div className="relative bg-gradient-to-r from-sky-600 to-indigo-700 rounded-[2.5rem] p-8 md:p-14 overflow-hidden shadow-2xl shadow-sky-500/20">
+                <div className="relative z-10 space-y-6">
+                    <div className="max-w-2xl">
+                        <h1 className="text-4xl md:text-6xl font-black text-white tracking-tight leading-none mb-4">
+                            Master New <span className="text-sky-300 underline decoration-sky-400/30">Skills</span>
+                        </h1>
+                        <p className="text-sky-100/80 text-lg font-medium">Browse our expert-led courses and start your transformation today.</p>
+                    </div>
                     
-                    {/* Search Bar */}
-                    <div className="relative w-full md:w-1/2">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Search className="h-5 w-5 text-gray-400" />
-                        </div>
-                        <input
-                            type="text"
-                            placeholder="Search for courses..."
+                    <div className="relative max-w-xl">
+                        <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={22} />
+                        <input 
+                            type="text" 
+                            placeholder="Search by title, keyword..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="block w-full pl-10 pr-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl leading-5 bg-white/50 dark:bg-gray-900/50 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all"
+                            className="w-full pl-14 pr-6 py-5 bg-white/95 backdrop-blur-md text-gray-900 rounded-[1.5rem] outline-none focus:ring-4 focus:ring-sky-400/40 shadow-2xl font-bold transition-all text-lg"
                         />
                     </div>
-
-                    {/* Category Filter */}
-                    <div className="flex space-x-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 hide-scrollbar">
-                        {categories.map((category) => (
-                            <button
-                                key={category}
-                                onClick={() => setSelectedCategory(category)}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
-                                    selectedCategory === category
-                                        ? 'bg-sky-500 text-white shadow-md shadow-sky-500/30'
-                                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700'
-                                }`}
-                            >
-                                {category}
-                            </button>
-                        ))}
-                    </div>
                 </div>
-            </GlassCard>
+                <div className="absolute top-0 right-0 w-80 h-80 bg-white/10 rounded-full blur-3xl -mr-20 -mt-20"></div>
+            </div>
 
-            {/* 🌟 Course Grid */}
-            {filteredCourses.length === 0 ? (
-                <div className="text-center py-20">
-                    <BookOpen className="mx-auto h-16 w-16 text-gray-300 dark:text-gray-600 mb-4" />
-                    <h3 className="text-xl font-medium text-gray-900 dark:text-white">No courses found</h3>
-                    <p className="mt-2 text-gray-500 dark:text-gray-400">Try adjusting your search or filter criteria.</p>
+            {/* 🛠️ Filters Bar */}
+            <div className="flex flex-wrap items-center gap-4 bg-white dark:bg-gray-900 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="flex items-center gap-2 text-sky-500 font-bold px-2">
+                    <Filter size={18} /> <span className="text-sm">Filters:</span>
                 </div>
-            ) : (
-                <motion.div 
-                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ staggerChildren: 0.1 }}
+                
+                {/* Category Filter */}
+                <select 
+                    value={filterCategory} 
+                    onChange={(e) => setFilterCategory(e.target.value)}
+                    className="bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-sky-500 transition-all"
                 >
-                    {filteredCourses.map((course, index) => (
-                        <motion.div
-                            key={course.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.1 }}
-                            className="bg-white dark:bg-gray-800/80 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700/50 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col"
-                        >
-                            {/* Course Thumbnail (Placeholder or Real) */}
-                            <div className="h-48 bg-gradient-to-br from-sky-100 to-indigo-100 dark:from-sky-900/40 dark:to-indigo-900/40 relative">
-                                {course.thumbnail_url ? (
-                                    <img src={course.thumbnail_url} alt={course.title} className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="flex items-center justify-center h-full">
-                                        <BookOpen className="h-16 w-16 text-sky-400/50 dark:text-sky-500/30" />
-                                    </div>
-                                )}
-                                <div className="absolute top-4 right-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur text-xs font-bold px-3 py-1 rounded-full text-sky-700 dark:text-sky-400 shadow-sm">
-                                    {course.difficulty || 'All Levels'}
-                                </div>
-                            </div>
+                    {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                </select>
 
-                            {/* Course Info */}
-                            <div className="p-6 flex-1 flex flex-col">
-                                <div className="text-xs font-semibold tracking-wide uppercase text-sky-500 dark:text-sky-400 mb-2">
+                {/* Difficulty Filter */}
+                <select 
+                    value={filterDifficulty} 
+                    onChange={(e) => setFilterDifficulty(e.target.value)}
+                    className="bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-2 text-sm font-semibold focus:ring-2 focus:ring-sky-500 transition-all"
+                >
+                    <option value="All">All Levels</option>
+                    <option value="Beginner">Beginner</option>
+                    <option value="Intermediate">Intermediate</option>
+                    <option value="Advanced">Advanced</option>
+                </select>
+
+                {/* Price Filter */}
+                <select 
+                    value={filterPrice} 
+                    onChange={(e) => setFilterPrice(e.target.value)}
+                    className="bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-sky-500 transition-all"
+                >
+                    <option value="All">All Prices</option>
+                    <option value="Free">Free</option>
+                    <option value="Paid">Paid</option>
+                </select>
+
+                <button 
+                    onClick={() => {setFilterCategory('All'); setFilterDifficulty('All'); setFilterPrice('All'); setSearchTerm('')}}
+                    className="ml-auto text-xs font-bold text-gray-400 hover:text-sky-500 uppercase tracking-widest"
+                >
+                    Reset All
+                </button>
+            </div>
+
+            {/* 📚 Course Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {filteredCourses.map((course, idx) => (
+                    <motion.div key={course.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}>
+                        <GlassCard className="flex flex-col h-full overflow-hidden hover:translate-y-[-8px] transition-all duration-500 border-none bg-white dark:bg-gray-900 shadow-sm hover:shadow-2xl group cursor-pointer" onClick={() => fetchCoursePreview(course)}>
+                            
+                            <div className="h-48 relative overflow-hidden">
+                                {course.thumbnail_url ? (
+                                    <img src={course.thumbnail_url} alt={course.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                ) : (
+                                    <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-300"><BookOpen size={48} /></div>
+                                )}
+                                <div className="absolute top-4 left-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-sky-600 shadow-sm">
                                     {course.category}
                                 </div>
-                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 line-clamp-2">
-                                    {course.title}
-                                </h3>
-                                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 line-clamp-2 flex-1">
-                                    {course.description || "No description available for this course."}
-                                </p>
-                                
-                                <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100 dark:border-gray-700">
-                                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                                        <Star className="h-4 w-4 text-amber-400 mr-1 fill-current" />
-                                        <span>4.8</span>
+                            </div>
+
+                            <div className="p-6 flex-1 flex flex-col">
+                                <h3 className="text-xl font-black dark:text-white mb-2 leading-tight group-hover:text-sky-500 transition-colors">{course.title}</h3>
+                                <p className="text-gray-500 text-xs font-bold mb-4 flex items-center capitalize"><User size={14} className="mr-1.5" /> {course.instructor_name}</p>
+
+                                <div className="flex justify-between items-center mt-auto pt-4 border-t border-gray-50 dark:border-gray-800">
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">{course.difficulty}</span>
                                     </div>
-                                    <div className="font-bold text-gray-900 dark:text-white">
-                                        {course.price > 0 ? `$${course.price}` : 'Free'}
+                                    <div className="text-2xl font-black text-sky-600">
+                                        {course.price > 0 ? `$${course.price}` : 'FREE'}
+                                    </div>
+                                </div>
+                            </div>
+                        </GlassCard>
+                    </motion.div>
+                ))}
+            </div>
+
+            {/* 🌟 Course Details Sidebar / Modal Preview */}
+            <AnimatePresence>
+                {selectedCourse && (
+                    <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm">
+                        <motion.div 
+                            initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
+                            className="w-full max-w-2xl bg-white dark:bg-gray-950 h-full shadow-2xl overflow-y-auto"
+                        >
+                            <div className="p-6 border-b border-gray-100 dark:border-gray-800 sticky top-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md z-10 flex justify-between items-center">
+                                <h2 className="text-xl font-black dark:text-white uppercase tracking-tight">Course Preview</h2>
+                                <button onClick={() => setSelectedCourse(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all text-gray-500"><X /></button>
+                            </div>
+
+                            <div className="p-8 space-y-8">
+                                {/* Header Info */}
+                                <div>
+                                    <h1 className="text-4xl font-black dark:text-white mb-4 leading-tight">{selectedCourse.title}</h1>
+                                    <div className="flex flex-wrap gap-4 items-center">
+                                        <span className="px-4 py-1.5 bg-sky-50 dark:bg-sky-900/20 text-sky-600 rounded-xl text-sm font-black uppercase">{selectedCourse.category}</span>
+                                        <span className="text-gray-400 font-bold text-sm flex items-center"><User size={16} className="mr-2" /> {selectedCourse.instructor_name}</span>
                                     </div>
                                 </div>
 
-                                <Link href={`/student/courses/${course.id}`} className="mt-6 w-full">
-                                    <button className="w-full py-2.5 bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 font-semibold rounded-xl hover:bg-sky-500 hover:text-white dark:hover:bg-sky-500 dark:hover:text-white transition-colors">
-                                        View Details
+                                <div className="space-y-3">
+                                    <h4 className="text-lg font-black dark:text-white flex items-center"><BookOpen className="mr-2 text-sky-500" size={20} /> About this course</h4>
+                                    <p className="text-gray-600 dark:text-gray-400 leading-relaxed font-medium">
+                                        {selectedCourse.description || "This course is designed to take you from fundamentals to advanced concepts. Master the curriculum and earn your certification."}
+                                    </p>
+                                </div>
+
+                                {/* Lesson List Preview */}
+                                <div className="space-y-4">
+                                    <h4 className="text-lg font-black dark:text-white flex items-center justify-between">
+                                        <span>Curriculum</span>
+                                        {fetchingDetails && <Loader2 size={16} className="animate-spin text-sky-500" />}
+                                    </h4>
+                                    
+                                    <div className="space-y-3">
+                                        {courseDetails?.lessons && courseDetails.lessons.length > 0 ? (
+                                            courseDetails.lessons.map((lesson, i) => (
+                                                <div key={lesson.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-transparent hover:border-sky-500/30 transition-all group">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-8 h-8 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center text-xs font-black text-sky-500 border border-gray-100 dark:border-gray-700">{i + 1}</div>
+                                                        <p className="font-bold text-gray-800 dark:text-gray-200">{lesson.title}</p>
+                                                    </div>
+                                                    <PlayCircle size={18} className="text-gray-300 group-hover:text-sky-500 transition-colors" />
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-gray-400 text-sm italic py-4 bg-gray-50 dark:bg-gray-900 rounded-2xl text-center">Enroll to unlock and view full curriculum.</p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Bottom Action */}
+                                <div className="pt-8 border-t border-gray-100 dark:border-gray-800 sticky bottom-0 bg-white dark:bg-gray-950 pb-8">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Price</span>
+                                            <span className="text-3xl font-black text-emerald-500">{selectedCourse.price > 0 ? `$${selectedCourse.price}` : 'FREE'}</span>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Level</span>
+                                            <span className="block font-black text-gray-800 dark:text-white">{selectedCourse.difficulty}</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <button 
+                                        onClick={() => handleEnroll(selectedCourse.id)}
+                                        disabled={enrollingId === selectedCourse.id}
+                                        className="w-full py-5 bg-sky-500 hover:bg-sky-600 text-white font-black rounded-[1.5rem] flex items-center justify-center transition-all shadow-xl shadow-sky-500/30 text-lg group"
+                                    >
+                                        {enrollingId === selectedCourse.id ? (
+                                            <Loader2 size={24} className="animate-spin" />
+                                        ) : (
+                                            <><ShoppingBag size={22} className="mr-2" /> Start My Journey Now <ArrowRight className="ml-2 group-hover:translate-x-2 transition-transform" /></>
+                                        )}
                                     </button>
-                                </Link>
+                                </div>
                             </div>
                         </motion.div>
-                    ))}
-                </motion.div>
-            )}
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

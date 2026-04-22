@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *)); /* এই লাইনটি ডার্ক মোড টগল সচল করবে */
-
+@media print { .print\:hidden { display: none; } }
 /* Global Body Styling for Smooth Theme Transition */
 @layer base {
   body {

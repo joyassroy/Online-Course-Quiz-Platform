@@ -67,33 +67,30 @@ exports.getMyCourses = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
-// @desc    Submit Quiz Attempt and Calculate Score
+
+
+// @desc    Submit Quiz Attempt, Calculate Score & Auto-Generate Certificate
 // @route   POST /api/student/quiz/submit
 exports.submitQuizAttempt = async (req, res) => {
     try {
-        const { quiz_id, answers } = req.body; // answers: [{ question_id: 1, selected_option: 2 }, ...]
+        const { quiz_id, answers } = req.body;
         const student_id = req.user.id;
 
         if (!quiz_id || !answers || !Array.isArray(answers)) {
             return res.status(400).json({ success: false, message: 'Invalid submission data.' });
         }
 
-        // ১. ওই কুইজের সব সঠিক উত্তর ডাটাবেস থেকে নিয়ে আসা
-        const [questions] = await req.db.query(
-            'SELECT id, correct_option FROM Questions WHERE quiz_id = ?',
-            [quiz_id]
-        );
-
-        if (questions.length === 0) {
-            return res.status(404).json({ success: false, message: 'No questions found for this quiz.' });
-        }
-
-        // ২. কুইজের পাসিং ক্রাইটেরিয়া চেক করা
+        // ১. ওই কুইজের কোর্স আইডি এবং পাসিং ক্রাইটেরিয়া নিয়ে আসা
         const [quizInfo] = await req.db.query(
-            'SELECT pass_percentage, max_attempts FROM Quizzes WHERE id = ?',
+            'SELECT id, course_id, pass_percentage FROM Quizzes WHERE id = ?',
             [quiz_id]
         );
-        const { pass_percentage, max_attempts } = quizInfo[0];
+        
+        if (quizInfo.length === 0) return res.status(404).json({ success: false, message: 'Quiz not found.' });
+        const { course_id, pass_percentage } = quizInfo[0];
+
+        // ২. প্রশ্ন ও সঠিক উত্তর আনা
+        const [questions] = await req.db.query('SELECT id, correct_option FROM Questions WHERE quiz_id = ?', [quiz_id]);
 
         // ৩. স্কোর ক্যালকুলেট করা
         let correctAnswersCount = 0;
@@ -107,23 +104,44 @@ exports.submitQuizAttempt = async (req, res) => {
         const scorePercentage = (correctAnswersCount / questions.length) * 100;
         const isPassed = scorePercentage >= pass_percentage;
 
-        // ৪. Quiz_Attempts টেবিলে রেজাল্ট সেভ করা (তোমার ERD অনুযায়ী)
+        // ৪. Quiz_Attempts টেবিলে রেজাল্ট সেভ করা
         const [result] = await req.db.query(
-            `INSERT INTO Quiz_Attempts (student_id, quiz_id, score, is_passed) 
-             VALUES (?, ?, ?, ?)`,
+            `INSERT INTO Quiz_Attempts (student_id, quiz_id, score, is_passed) VALUES (?, ?, ?, ?)`,
             [student_id, quiz_id, scorePercentage, isPassed]
         );
 
+        // 🌟 ৫. অটোমেটিক সার্টিফিকেট জেনারেশন (যদি পাস করে)
+        let certificateCode = null;
+        if (isPassed) {
+            // আগে চেক করি অলরেডি এই কোর্সের সার্টিফিকেট আছে কি না (যাতে ডাবল জেনারেট না হয়)
+            const [existingCert] = await req.db.query(
+                'SELECT certificate_code FROM Certificates WHERE student_id = ? AND course_id = ?',
+                [student_id, course_id]
+            );
+
+            if (existingCert.length === 0) {
+                // নতুন সার্টিফিকেট কোড বানানো এবং সেভ করা
+                certificateCode = `CERT-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+                await req.db.query(
+                    'INSERT INTO Certificates (student_id, course_id, certificate_code, issued_at) VALUES (?, ?, ?, NOW())',
+                    [student_id, course_id, certificateCode]
+                );
+                console.log(`Certificate Auto-Generated: ${certificateCode} for Student: ${student_id}`);
+            } else {
+                certificateCode = existingCert[0].certificate_code;
+            }
+        }
+
         res.status(200).json({
             success: true,
-            message: isPassed ? 'Congratulations! You passed.' : 'Better luck next time.',
+            message: isPassed ? 'Congratulations! You passed and earned a certificate.' : 'Better luck next time.',
             results: {
                 total_questions: questions.length,
                 correct_answers: correctAnswersCount,
                 score_percentage: scorePercentage.toFixed(2),
-                is_passed: isPassed
-            },
-            attempt_id: result.insertId
+                is_passed: isPassed,
+                certificate_code: certificateCode // ফ্রন্টএন্ডকে জানিয়ে দেওয়া হলো
+            }
         });
 
     } catch (error) {
@@ -313,5 +331,114 @@ exports.generateCertificate = async (req, res) => {
     } catch (error) {
         console.error('Certificate Error:', error);
         res.status(500).json({ success: false, message: 'Server error while generating certificate.' });
+    }
+};
+// @desc    Get all lessons for an enrolled course (Student View)
+// @route   GET /api/student/courses/:courseId/lessons
+exports.getCourseLessons = async (req, res) => {
+    try {
+        const { courseId } = req.params;
+        const studentId = req.user.id;
+
+        // ১. চেক করবো স্টুডেন্ট এই কোর্সে এনরোলড কি না
+        const [enrollment] = await req.db.query(
+            'SELECT progress_percentage FROM Enrollments WHERE student_id = ? AND course_id = ?',
+            [studentId, courseId]
+        );
+
+        if (enrollment.length === 0) {
+            return res.status(403).json({ success: false, message: 'You are not enrolled in this course.' });
+        }
+
+        // ২. কোর্সের সব লেসন আনবো এবং দেখবো স্টুডেন্ট কোনটা কোনটা কমপ্লিট করেছে
+        const [lessons] = await req.db.query(
+            `SELECT l.id, l.title, l.content, l.video_url, l.resource_file_url, l.sequence_order,
+                    IF(ulp.id IS NOT NULL, true, false) as is_completed
+             FROM Lessons l
+             LEFT JOIN User_Lesson_Progress ulp ON l.id = ulp.lesson_id AND ulp.student_id = ?
+             WHERE l.course_id = ?
+             ORDER BY l.sequence_order ASC`,
+            [studentId, courseId]
+        );
+
+        res.status(200).json({ 
+            success: true, 
+            data: {
+                progress: enrollment[0].progress_percentage,
+                lessons: lessons
+            } 
+        });
+
+    } catch (error) {
+        console.error('Fetch Lessons Error:', error);
+        res.status(500).json({ success: false, message: 'Server error while fetching lessons.' });
+    }
+};
+// @desc    Get Quiz & Questions for a Course (Student View - HIDDEN ANSWERS)
+// @route   GET /api/student/quiz/:courseId
+exports.getQuizForStudent = async (req, res) => {
+    try {
+        const { courseId } = req.params;
+
+        // ১. কোর্সের কুইজ খোঁজা
+        const [quizResult] = await req.db.query(
+            'SELECT id, title, time_limit_minutes, pass_percentage, max_attempts FROM Quizzes WHERE course_id = ?',
+            [courseId]
+        );
+
+        if (quizResult.length === 0) {
+            return res.status(404).json({ success: false, message: 'No quiz found for this course.' });
+        }
+
+        const quiz = quizResult[0];
+
+        // ২. প্রশ্নগুলো আনা (সতর্কতা: correct_option সিলেক্ট করা হয়নি!)
+        const [questions] = await req.db.query(
+            'SELECT id, question_text, option_1, option_2, option_3, option_4 FROM Questions WHERE quiz_id = ?',
+            [quiz.id]
+        );
+
+        res.status(200).json({
+            success: true,
+            data: {
+                quiz: quiz,
+                questions: questions
+            }
+        });
+
+    } catch (error) {
+        console.error('Fetch Quiz Error:', error);
+        res.status(500).json({ success: false, message: 'Server error while fetching quiz.' });
+    }
+};
+// @desc    Get all certificates with detailed info
+// @route   GET /api/student/certificates
+exports.getMyCertificates = async (req, res) => {
+    try {
+        const student_id = req.user.id;
+        
+        const query = `
+            SELECT 
+                cert.certificate_code, 
+                cert.issued_at as completion_date, 
+                c.title as course_title, 
+                c.category,
+                u_student.full_name as student_name, 
+                u_instructor.full_name as instructor_name,
+                (SELECT MAX(score) FROM Quiz_Attempts qa 
+                 JOIN Quizzes q ON qa.quiz_id = q.id 
+                 WHERE qa.student_id = cert.student_id AND q.course_id = c.id AND qa.is_passed = 1) as score
+            FROM Certificates cert
+            JOIN Courses c ON cert.course_id = c.id
+            JOIN Users u_student ON cert.student_id = u_student.id
+            JOIN Users u_instructor ON c.instructor_id = u_instructor.id
+            WHERE cert.student_id = ?
+            ORDER BY cert.issued_at DESC
+        `;
+        
+        const [certs] = await req.db.query(query, [student_id]);
+        res.status(200).json({ success: true, data: certs });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
     }
 };
