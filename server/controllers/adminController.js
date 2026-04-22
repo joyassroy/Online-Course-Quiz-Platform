@@ -7,7 +7,8 @@ exports.getAllUsers = async (req, res) => {
         
         let query = `SELECT u.id, u.full_name, u.email, u.status, u.created_at, r.role_name 
                      FROM Users u 
-                     LEFT JOIN Roles r ON u.role_id = r.id`;
+                     LEFT JOIN Roles r ON u.role_id = r.id
+                     WHERE u.id != 1`;
         let queryParams = [];
 
         // যদি অ্যাডমিন শুধু Pending ইউজারদের দেখতে চায়
