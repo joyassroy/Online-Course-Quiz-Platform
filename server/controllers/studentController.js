@@ -450,11 +450,11 @@ exports.getCourseById = async (req, res) => {
         const studentId = req.user.id; // টোকেন থেকে পাওয়া
 
         // কোর্স তথ্য আনা
-        const [course] = await req.db.query('SELECT * FROM courses WHERE id = ?', [id]);
+        const [course] = await req.db.query('SELECT * FROM Courses WHERE id = ?', [id]);
         
         // স্টুডেন্ট এনরোলড কি না চেক করা
         const [enrollment] = await req.db.query(
-            'SELECT * FROM enrollments WHERE student_id = ? AND course_id = ?', 
+            'SELECT * FROM Enrollments WHERE student_id = ? AND course_id = ?', 
             [studentId, id]
         );
 
