@@ -7,9 +7,9 @@ import api from '@/utils/api';
 import toast from 'react-hot-toast';
 import GlassCard from '@/components/ui/GlassCard';
 import { 
-    Search, BookOpen, Star, User, 
+    Search, BookOpen, User, 
     ArrowRight, ShoppingBag, Loader2, 
-    Filter, X, PlayCircle, Clock, ChevronRight 
+    Filter, X, PlayCircle, ChevronRight 
 } from 'lucide-react';
 
 export default function CourseExplorer() {
@@ -19,12 +19,10 @@ export default function CourseExplorer() {
     const [enrollingId, setEnrollingId] = useState(null); 
     const [searchTerm, setSearchTerm] = useState('');
     
-    // 🌟 Filter States
     const [filterCategory, setFilterCategory] = useState('All');
     const [filterDifficulty, setFilterDifficulty] = useState('All');
     const [filterPrice, setFilterPrice] = useState('All');
     
-    // 🌟 Detail Preview States
     const [selectedCourse, setSelectedCourse] = useState(null);
     const [courseDetails, setCourseDetails] = useState(null);
     const [fetchingDetails, setFetchingDetails] = useState(false);
@@ -46,19 +44,15 @@ export default function CourseExplorer() {
         }
     };
 
-    // 🌟 Fetch Course Details & Lessons
     const fetchCoursePreview = async (course) => {
         setSelectedCourse(course);
         setFetchingDetails(true);
         try {
-            // ইনস্ট্রাক্টরের এন্ডপয়েন্ট বা স্টুডেন্ট এন্ডপয়েন্ট থেকে লেসন লিস্ট আনা
             const res = await api.get(`/student/courses/${course.id}/lessons`);
             if (res.data.success) {
                 setCourseDetails(res.data.data);
             }
         } catch (error) {
-            console.error("Preview error:", error);
-            // যদি এনরোল করা না থাকে, তবে হয়তো লেসন লিস্ট আসবে না, সেটা হ্যান্ডেল করা
             setCourseDetails({ lessons: [] }); 
         } finally {
             setFetchingDetails(false);
@@ -81,7 +75,6 @@ export default function CourseExplorer() {
         }
     };
 
-    // 🌟 Multi-Level Filtering Logic
     const filteredCourses = courses.filter(course => {
         const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                              course.category.toLowerCase().includes(searchTerm.toLowerCase());
@@ -128,7 +121,6 @@ export default function CourseExplorer() {
                         />
                     </div>
                 </div>
-                <div className="absolute top-0 right-0 w-80 h-80 bg-white/10 rounded-full blur-3xl -mr-20 -mt-20"></div>
             </div>
 
             {/* 🛠️ Filters Bar */}
@@ -137,42 +129,24 @@ export default function CourseExplorer() {
                     <Filter size={18} /> <span className="text-sm">Filters:</span>
                 </div>
                 
-                {/* Category Filter */}
-                <select 
-                    value={filterCategory} 
-                    onChange={(e) => setFilterCategory(e.target.value)}
-                    className="bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-sky-500 transition-all"
-                >
+                <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-sky-500">
                     {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
 
-                {/* Difficulty Filter */}
-                <select 
-                    value={filterDifficulty} 
-                    onChange={(e) => setFilterDifficulty(e.target.value)}
-                    className="bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-2 text-sm font-semibold focus:ring-2 focus:ring-sky-500 transition-all"
-                >
+                <select value={filterDifficulty} onChange={(e) => setFilterDifficulty(e.target.value)} className="bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-2 text-sm font-semibold focus:ring-2 focus:ring-sky-500">
                     <option value="All">All Levels</option>
                     <option value="Beginner">Beginner</option>
                     <option value="Intermediate">Intermediate</option>
                     <option value="Advanced">Advanced</option>
                 </select>
 
-                {/* Price Filter */}
-                <select 
-                    value={filterPrice} 
-                    onChange={(e) => setFilterPrice(e.target.value)}
-                    className="bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-sky-500 transition-all"
-                >
+                <select value={filterPrice} onChange={(e) => setFilterPrice(e.target.value)} className="bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-sky-500">
                     <option value="All">All Prices</option>
                     <option value="Free">Free</option>
                     <option value="Paid">Paid</option>
                 </select>
 
-                <button 
-                    onClick={() => {setFilterCategory('All'); setFilterDifficulty('All'); setFilterPrice('All'); setSearchTerm('')}}
-                    className="ml-auto text-xs font-bold text-gray-400 hover:text-sky-500 uppercase tracking-widest"
-                >
+                <button onClick={() => {setFilterCategory('All'); setFilterDifficulty('All'); setFilterPrice('All'); setSearchTerm('')}} className="ml-auto text-xs font-bold text-gray-400 hover:text-sky-500 uppercase tracking-widest">
                     Reset All
                 </button>
             </div>
@@ -181,22 +155,43 @@ export default function CourseExplorer() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {filteredCourses.map((course, idx) => (
                     <motion.div key={course.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}>
-                        <GlassCard className="flex flex-col h-full overflow-hidden hover:translate-y-[-8px] transition-all duration-500 border-none bg-white dark:bg-gray-900 shadow-sm hover:shadow-2xl group cursor-pointer" onClick={() => fetchCoursePreview(course)}>
-                            
+                        <GlassCard 
+                            className="relative flex flex-col h-full overflow-hidden hover:translate-y-[-8px] transition-all duration-500 border-none bg-white dark:bg-gray-900 shadow-sm hover:shadow-2xl group cursor-pointer" 
+                            onClick={() => router.push(`/student/courses/${course.id}`)}
+                        >
+                            {/* Course Thumbnail */}
                             <div className="h-48 relative overflow-hidden">
                                 {course.thumbnail_url ? (
                                     <img src={course.thumbnail_url} alt={course.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                                 ) : (
-                                    <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-300"><BookOpen size={48} /></div>
+                                    <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-300">
+                                        <BookOpen size={48} />
+                                    </div>
                                 )}
-                                <div className="absolute top-4 left-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-sky-600 shadow-sm">
+                                <div className="absolute top-4 left-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-sky-600">
                                     {course.category}
                                 </div>
+                                
+                                {/* Quick Preview Button */}
+                                <button 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        fetchCoursePreview(course);
+                                    }}
+                                    className="absolute top-4 right-4 p-2 bg-sky-500 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                                >
+                                    <Search size={16} />
+                                </button>
                             </div>
 
+                            {/* Course Content */}
                             <div className="p-6 flex-1 flex flex-col">
-                                <h3 className="text-xl font-black dark:text-white mb-2 leading-tight group-hover:text-sky-500 transition-colors">{course.title}</h3>
-                                <p className="text-gray-500 text-xs font-bold mb-4 flex items-center capitalize"><User size={14} className="mr-1.5" /> {course.instructor_name}</p>
+                                <h3 className="text-xl font-black dark:text-white mb-2 leading-tight group-hover:text-sky-500 transition-colors">
+                                    {course.title}
+                                </h3>
+                                <p className="text-gray-500 text-xs font-bold mb-4 flex items-center capitalize">
+                                    <User size={14} className="mr-1.5" /> {course.instructor_name}
+                                </p>
 
                                 <div className="flex justify-between items-center mt-auto pt-4 border-t border-gray-50 dark:border-gray-800">
                                     <div className="flex items-center gap-1.5">
@@ -213,21 +208,17 @@ export default function CourseExplorer() {
                 ))}
             </div>
 
-            {/* 🌟 Course Details Sidebar / Modal Preview */}
+            {/* 🌟 Sidebar Preview Section */}
             <AnimatePresence>
                 {selectedCourse && (
                     <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm">
-                        <motion.div 
-                            initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
-                            className="w-full max-w-2xl bg-white dark:bg-gray-950 h-full shadow-2xl overflow-y-auto"
-                        >
+                        <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="w-full max-w-2xl bg-white dark:bg-gray-950 h-full shadow-2xl overflow-y-auto">
                             <div className="p-6 border-b border-gray-100 dark:border-gray-800 sticky top-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md z-10 flex justify-between items-center">
-                                <h2 className="text-xl font-black dark:text-white uppercase tracking-tight">Course Preview</h2>
+                                <h2 className="text-xl font-black dark:text-white uppercase tracking-tight">Quick Preview</h2>
                                 <button onClick={() => setSelectedCourse(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all text-gray-500"><X /></button>
                             </div>
 
                             <div className="p-8 space-y-8">
-                                {/* Header Info */}
                                 <div>
                                     <h1 className="text-4xl font-black dark:text-white mb-4 leading-tight">{selectedCourse.title}</h1>
                                     <div className="flex flex-wrap gap-4 items-center">
@@ -236,60 +227,30 @@ export default function CourseExplorer() {
                                     </div>
                                 </div>
 
-                                <div className="space-y-3">
-                                    <h4 className="text-lg font-black dark:text-white flex items-center"><BookOpen className="mr-2 text-sky-500" size={20} /> About this course</h4>
-                                    <p className="text-gray-600 dark:text-gray-400 leading-relaxed font-medium">
-                                        {selectedCourse.description || "This course is designed to take you from fundamentals to advanced concepts. Master the curriculum and earn your certification."}
-                                    </p>
-                                </div>
-
-                                {/* Lesson List Preview */}
                                 <div className="space-y-4">
                                     <h4 className="text-lg font-black dark:text-white flex items-center justify-between">
-                                        <span>Curriculum</span>
+                                        <span>Curriculum Preview</span>
                                         {fetchingDetails && <Loader2 size={16} className="animate-spin text-sky-500" />}
                                     </h4>
-                                    
                                     <div className="space-y-3">
-                                        {courseDetails?.lessons && courseDetails.lessons.length > 0 ? (
-                                            courseDetails.lessons.map((lesson, i) => (
-                                                <div key={lesson.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-transparent hover:border-sky-500/30 transition-all group">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="w-8 h-8 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center text-xs font-black text-sky-500 border border-gray-100 dark:border-gray-700">{i + 1}</div>
-                                                        <p className="font-bold text-gray-800 dark:text-gray-200">{lesson.title}</p>
-                                                    </div>
-                                                    <PlayCircle size={18} className="text-gray-300 group-hover:text-sky-500 transition-colors" />
+                                        {courseDetails?.lessons?.map((lesson, i) => (
+                                            <div key={lesson.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-8 h-8 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center text-xs font-black text-sky-500">{i + 1}</div>
+                                                    <p className="font-bold text-gray-800 dark:text-gray-200">{lesson.title}</p>
                                                 </div>
-                                            ))
-                                        ) : (
-                                            <p className="text-gray-400 text-sm italic py-4 bg-gray-50 dark:bg-gray-900 rounded-2xl text-center">Enroll to unlock and view full curriculum.</p>
-                                        )}
+                                                <PlayCircle size={18} className="text-gray-300" />
+                                            </div>
+                                        )) || <p className="text-gray-400 text-center">Enroll to see full curriculum.</p>}
                                     </div>
                                 </div>
 
-                                {/* Bottom Action */}
-                                <div className="pt-8 border-t border-gray-100 dark:border-gray-800 sticky bottom-0 bg-white dark:bg-gray-950 pb-8">
-                                    <div className="flex items-center justify-between mb-6">
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Price</span>
-                                            <span className="text-3xl font-black text-emerald-500">{selectedCourse.price > 0 ? `$${selectedCourse.price}` : 'FREE'}</span>
-                                        </div>
-                                        <div className="text-right">
-                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Level</span>
-                                            <span className="block font-black text-gray-800 dark:text-white">{selectedCourse.difficulty}</span>
-                                        </div>
-                                    </div>
-                                    
-                                    <button 
-                                        onClick={() => handleEnroll(selectedCourse.id)}
-                                        disabled={enrollingId === selectedCourse.id}
-                                        className="w-full py-5 bg-sky-500 hover:bg-sky-600 text-white font-black rounded-[1.5rem] flex items-center justify-center transition-all shadow-xl shadow-sky-500/30 text-lg group"
-                                    >
-                                        {enrollingId === selectedCourse.id ? (
-                                            <Loader2 size={24} className="animate-spin" />
-                                        ) : (
-                                            <><ShoppingBag size={22} className="mr-2" /> Start My Journey Now <ArrowRight className="ml-2 group-hover:translate-x-2 transition-transform" /></>
-                                        )}
+                                <div className="pt-8 border-t border-gray-100 dark:border-gray-800 sticky bottom-0 bg-white dark:bg-gray-950 pb-8 flex gap-3">
+                                    <button onClick={() => router.push(`/student/courses/${selectedCourse.id}`)} className="flex-1 py-4 border-2 border-sky-500 text-sky-500 font-black rounded-2xl hover:bg-sky-50 transition-all flex items-center justify-center gap-2">
+                                        Details <ChevronRight size={18} />
+                                    </button>
+                                    <button onClick={() => handleEnroll(selectedCourse.id)} disabled={enrollingId === selectedCourse.id} className="flex-[2] py-4 bg-sky-500 hover:bg-sky-600 text-white font-black rounded-2xl flex items-center justify-center transition-all shadow-lg shadow-sky-500/20">
+                                        {enrollingId === selectedCourse.id ? <Loader2 className="animate-spin" /> : 'Enroll Now'}
                                     </button>
                                 </div>
                             </div>

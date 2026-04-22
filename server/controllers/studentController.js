@@ -442,3 +442,32 @@ exports.getMyCertificates = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+// একটি নির্দিষ্ট কোর্স আইডি দিয়ে ডাটা আনা
+exports.getCourseById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const studentId = req.user.id; // টোকেন থেকে পাওয়া
+
+        // কোর্স তথ্য আনা
+        const [course] = await req.db.query('SELECT * FROM courses WHERE id = ?', [id]);
+        
+        // স্টুডেন্ট এনরোলড কি না চেক করা
+        const [enrollment] = await req.db.query(
+            'SELECT * FROM enrollments WHERE student_id = ? AND course_id = ?', 
+            [studentId, id]
+        );
+
+        if (course.length === 0) {
+            return res.status(404).json({ success: false, message: 'Course not found' });
+        }
+
+        res.json({ 
+            success: true, 
+            data: course[0], 
+            isEnrolled: enrollment.length > 0 
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};

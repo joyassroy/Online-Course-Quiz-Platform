@@ -12,7 +12,8 @@ const {
     getCourseLessons,
     getQuizForStudent,
     getMyCertificates,
-    generateCertificate // 🌟 এইটা মিসিং ছিল!
+    generateCertificate,
+    getCourseById // 🌟 এইটা মিসিং ছিল!
 } = require('../controllers/studentController');
 
 const { verifyToken, isStudent } = require('../middleware/authMiddleware');
@@ -40,5 +41,7 @@ router.get('/leaderboard/:quizId', getLeaderboard);
 // 📌 Certificate Routes
 router.post('/certificate/generate', generateCertificate); // 🌟 এই রাউটটা মিসিং ছিল!
 router.get('/certificates', getMyCertificates);
+
+router.get('/courses/:id', getCourseById);
 
 module.exports = router;
