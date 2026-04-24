@@ -79,6 +79,21 @@ app.get('/', (req, res) => {
 app.get('/ping', (req, res) => {
     res.status(200).send('Server is awake! 🚀');
 });
+// Database Keep-Alive / Health Check Route
+app.get('/api/health', async (req, res) => {
+    try {
+        // ডাটাবেসকে জাগিয়ে রাখার জন্য সবচেয়ে হালকা একটি কুয়েরি
+        await req.db.query('SELECT 1'); 
+        
+        res.status(200).json({ 
+            success: true, 
+            message: '🚀 Backend and Aiven Database are fully awake and running!' 
+        });
+    } catch (error) {
+        console.error('Health Check Failed:', error);
+        res.status(500).json({ success: false, message: 'Database is sleeping or down.' });
+    }
+});
 
 // ==========================================
 // 5. Server Initialization
